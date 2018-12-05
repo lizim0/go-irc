@@ -3,4 +3,4 @@
 ### Installation
 
     go get github.com/gorilla/websocket
-    go main.go
+    go run main.go
