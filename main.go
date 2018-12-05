@@ -1,6 +1,7 @@
 package main
 
 import (
+	"container/list"
 	"log"
 	"net/http"
 
@@ -8,10 +9,10 @@ import (
 )
 
 var clients = make(map[*websocket.Conn]bool)
-var broadcast = make(chan string)
 var upgrader = websocket.Upgrader{}
 
 func main() {
+	l := list.New()
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, r.URL.Path[1:])
 	})
@@ -22,15 +23,19 @@ func main() {
 		}
 		defer ws.Close()
 		clients[ws] = true
+		for e := l.Front(); e != nil; e = e.Next() {
+			ws.WriteMessage(websocket.TextMessage, e.Value.([]byte))
+		}
 		for {
-			messageType, p, err := ws.ReadMessage()
+			_, p, err := ws.ReadMessage()
 			if err != nil {
 				log.Printf("error: %v", err)
 				delete(clients, ws)
 				break
 			}
+			l.PushBack(p)
 			for client := range clients {
-				client.WriteMessage(messageType, p)
+				client.WriteMessage(websocket.TextMessage, p)
 				if err != nil {
 					log.Printf("error: %v", err)
 					client.Close()
